@@ -117,6 +117,12 @@ def main_menu_inline(uid=None):
         kb.add(types.InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel"))
     return kb
 
+# ✅ Bekor qilish uchun universal tugma
+def back_kb():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    kb.add(types.KeyboardButton("⏹️ Bekor qilish"))
+    return kb
+
 # --------------------
 # START + ✅ New Subscriber Notify Admin
 # --------------------
@@ -141,9 +147,9 @@ async def cmd_start(message: types.Message):
             logger.exception("Adminga yangi obunachi xabarini yuborishda xato: %s", e)
 
     await message.answer(
-        f"Assalomu alaykum, {message.from_user.first_name}! 👋",
-        reply_markup=main_menu_kb(message.from_user.id)
-    )
+    f"Assalomu alaykum, {message.from_user.first_name}! 👋",
+    reply_markup=main_menu_inline(message.from_user.id)
+)
 
 # --------------------
 # /start (ikkilamchi nusxa olib tashlandi) — tugadi
@@ -391,7 +397,7 @@ async def sell_amount_handler(message: types.Message, state: FSMContext):
     txt = message.text.strip()
     if txt == "⏹️ Bekor qilish":
         await state.finish()
-        await message.answer("Operatsiya bekor qilindi.", reply_markup=main_menu_kb(message.from_user.id))
+        await message.answer("Operatsiya bekor qilindi.", reply_markup=main_menu_inline(message.from_user.id))
         return
     try:
         amt = float(txt.replace(",", "."))
@@ -447,7 +453,7 @@ async def sell_wallet_handler(message: types.Message, state: FSMContext):
 async def sell_confirm_handler(message: types.Message, state: FSMContext):
     if message.text == "⏹️ Bekor qilish":
         await state.finish()
-        await message.answer("Operatsiya bekor qilindi.", reply_markup=main_menu_kb(message.from_user.id))
+        await message.answer("Operatsiya bekor qilindi.", reply_markup=main_menu_inline(message.from_user.id))
         return
 
     if message.text != "Chek yuborish":
