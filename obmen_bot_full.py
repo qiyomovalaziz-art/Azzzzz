@@ -91,6 +91,9 @@ class AdminFSM(StatesGroup):
 class ContactAdminFSM(StatesGroup):
     wait_message = State()
 
+class AdminReplyFSM(StatesGroup):
+    wait_answer = State()
+    
 # --------------------
 # Helpers
 # --------------------
