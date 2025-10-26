@@ -548,7 +548,10 @@ async def send_order_to_admin(order_id):
 # --------------------
 # ADMIN PANEL BOSHI va qolgan admin funktsiyalari (o'zgarmadi)
 # --------------------
-@dp.message_handler(lambda m: m.text == "⚙️ Admin Panel")
+@dp.callback_query_handler(lambda c: c.data == "admin_panel")
+async def cb_admin_panel(call: types.CallbackQuery):
+    await admin_panel(call.message)
+    await call.answer()
 async def admin_panel(message: types.Message):
     if not is_admin(message.from_user.id):
         await message.answer("⛔ Sizda admin huquqi yo‘q.")
