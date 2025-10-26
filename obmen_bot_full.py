@@ -825,32 +825,29 @@ async def contact_admin_send(message: types.Message, state: FSMContext):
     if message.text == "⏹️ Bekor qilish":
         await state.finish()
         return await message.answer("Bekor qilindi ✅", reply_markup=main_menu_kb(message.from_user.id))
-
-    try:
-        # ✅ Adminga javob tugmasi
-        reply_kb = types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton(
-                text="✉️ Javob yuborish",
-                callback_data=f"reply_to_user|{message.from_user.id}"
-            )
+ try:
+    reply_kb = types.InlineKeyboardMarkup().add(
+        types.InlineKeyboardButton(
+            text="✉️ Javob yuborish",
+            callback_data=f"reply_to_user|{message.from_user.id}"
         )
+    )
 
-        # ✅ Tugma endi admin xabariga biriktirildi
-        await bot.send_message(
-            ADMIN_ID,
-            f"📨 *Foydalanuvchidan xabar:*\n\n"
-            f"👤 {message.from_user.full_name}\n"
-            f"🆔 {message.from_user.id}\n\n"
-            f"💬 {message.text}",
-            reply_markup=reply_kb,
-            parse_mode="Markdown"
-        )
+    await bot.send_message(
+        ADMIN_ID,
+        f"📨 *Foydalanuvchidan xabar:*\n\n"
+        f"👤 {message.from_user.full_name}\n"
+        f"🆔 {message.from_user.id}\n\n"
+        f"💬 {message.text}",
+        reply_markup=reply_kb,
+        parse_mode="Markdown"
+    )
 
-    except Exception as e:
-        logger.exception("Adminga xabar yuborishda xato: %s", e)
+except Exception as e:
+    logger.exception("Adminga xabar yuborishda xato: %s", e)
 
-    await state.finish()
-    await message.answer("✅ Xabaringiz adminga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
+await state.finish()
+await message.answer("✅ Xabaringiz adminga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
 # --------------------
 # BOTNI ISHGA TUSHIRISH
 # --------------------
