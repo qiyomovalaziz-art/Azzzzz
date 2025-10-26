@@ -41,16 +41,12 @@ def load_json(path: str, default: Any):
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception as e:
-        logger.exception("Faylni o'qishda xato (%s): %s", path, e)
+    except:
         return default
 
 def save_json(path: str, data: Any):
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.exception("Faylga yozishda xato (%s): %s", path, e)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 currencies: Dict[str, Any] = load_json(CURRENCIES_FILE, {})
 users: Dict[str, Any] = load_json(USERS_FILE, {})
@@ -85,61 +81,40 @@ class AdminFSM(StatesGroup):
     edit_set_value = State()
     delete_choose = State()
     broadcast_message = State()
-    confirm_broadcast = State()
 
-# --- Qo'shimcha: adminga xabar uchun FSM
 class ContactAdminFSM(StatesGroup):
     wait_message = State()
 
 class AdminReplyFSM(StatesGroup):
     wait_answer = State()
-    
+
 # --------------------
 # Helpers
 # --------------------
-def is_admin(user_id):
-    try:
-        return str(user_id) == str(ADMIN_ID)
-    except:
-        return False
+def is_admin(uid):
+    return str(uid) == str(ADMIN_ID)
 
 def ensure_user(uid, user=None):
-    """
-    uid: int yoki str
-    Saqlash uchun kalit sifatida always str(uid) ishlatiladi.
-    """
-    key = str(uid)
-    if key not in users:
-        users[key] = {
-            "id": int(uid),
-            "name": user.full_name if user else "",
-            "username": user.username if user else "",
-            "joined_at": int(time.time()),
-            "orders": []
-        }
+    uid = str(uid)
+    if uid not in users:
+        users[uid] = {"id": int(uid), "orders": []}
         save_json(USERS_FILE, users)
-    return users[key]
+    return users[uid]
 
 def new_order_id():
     return str(int(time.time() * 1000))
 
-def main_menu_kb(uid=None):
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row("💲 Sotib olish", "💰 Sotish")
-    kb.row("📋 Mening buyurtmalarim", "📨 Adminga xabar yuborish")
-    if uid and is_admin(uid):
-        kb.add("⚙️ Admin Panel")
-    return kb
-
-def back_kb():
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("⏹️ Bekor qilish")
-    return kb
-
-def admin_order_kb(order_id: str) -> types.InlineKeyboardMarkup:
+# ========================
+# ✅ INLINE MAIN MENU
+# ========================
+def main_menu_inline(uid=None):
     kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"admin_order|confirm|{order_id}"))
-    kb.add(types.InlineKeyboardButton("❌ Bekor qilish", callback_data=f"admin_order|reject|{order_id}"))
+    kb.add(types.InlineKeyboardButton("💲 Sotib olish", callback_data="buy"))
+    kb.add(types.InlineKeyboardButton("💰 Sotish", callback_data="sell"))
+    kb.add(types.InlineKeyboardButton("📋 Mening buyurtmalarim", callback_data="my_orders"))
+    kb.add(types.InlineKeyboardButton("📨 Adminga xabar", callback_data="contact_admin"))
+    if uid and is_admin(uid):
+        kb.add(types.InlineKeyboardButton("⚙️ Admin Panel", callback_data="admin_panel"))
     return kb
 
 # --------------------
