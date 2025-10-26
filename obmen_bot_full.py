@@ -532,55 +532,38 @@ async def sell_upload_handler(message: types.Message, state: FSMContext):
     await message.answer("✅ Chek adminga yuborildi. Tez orada tasdiqlanadi.", reply_markup=main_menu_kb(message.from_user.id))
     await state.finish()
 
-# --------------------
-# Admin — buyurtmani tasdiqlash / bekor qilish
-# --------------------
-@dp.callback_query_handler(lambda c: c.data.startswith("admin_order"))
-async def admin_order_callback(call: types.CallbackQuery):
-    parts = call.data.split("|")
-    if len(parts) != 3:
-        await call.answer("Xato ma’lumot.")
-        return
-
-    action, order_id = parts[1], parts[2]
+# ---- Buyurtmani adminga ko‘rsatish (buni sendagi joyga qo‘yasan) ----
+async def send_order_to_admin(order_id):
     order = orders.get(order_id)
     if not order:
-        await call.answer("Buyurtma topilmadi.")
         return
 
-    uid = order["user_id"]
+    user_id = order["user_id"]
+    amount = order["amount"]
+    currency = order["currency"]
+    status = order.get("status", "⏳ Kutilmoqda")
 
-    if action == "confirm":
-        order["status"] = "✅ Tasdiqlandi"
-        save_json(ORDERS_FILE, orders)
-        try:
-            await bot.send_message(uid, f"✅ Sizning buyurtmangiz tasdiqlandi.\nBuyurtma ID: {order_id}")
-        except:
-            # foydalanuvchiga xabar yuborilmasa ham admin xabarni ko'radi
-            pass
-        # edit caption if message had one
-        try:
-            await call.message.edit_caption(f"{call.message.caption}\n\n✅ Admin tomonidan tasdiqlandi.")
-        except:
-            pass
-        await call.answer("Tasdiqlandi.")
+    caption = (
+        f"📦 *Yangi buyurtma*\n\n"
+        f"🆔 Buyurtma ID: {order_id}\n"
+        f"👤 User ID: {user_id}\n"
+        f"💱 Valyuta: {currency}\n"
+        f"💰 Miqdor: {amount}\n"
+        f"📌 Holat: {status}"
+    )
 
-    elif action == "reject":
-        order["status"] = "❌ Bekor qilindi"
-        save_json(ORDERS_FILE, orders)
-        try:
-            await bot.send_message(uid, f"❌ Sizning buyurtmangiz bekor qilindi.\nBuyurtma ID: {order_id}")
-        except:
-            pass
-        try:
-            await call.message.edit_caption(f"{call.message.caption}\n\n❌ Admin tomonidan bekor qilindi.")
-        except:
-            pass
-        await call.answer("Bekor qilindi.")
+    ik = InlineKeyboardMarkup()
+    ik.add(
+        InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"admin_order|confirm|{order_id}"),
+        InlineKeyboardButton("❌ Bekor qilish", callback_data=f"admin_order|reject|{order_id}")
+    )
 
+    # Agar buyurtma rasm bilan bo'lsa:
+    if order.get("photo"):
+        await bot.send_photo(ADMIN_ID, order["photo"], caption=caption, reply_markup=ik, parse_mode="Markdown")
     else:
-        await call.answer("Noma’lum amal.")
-
+        await bot.send_message(ADMIN_ID, caption, reply_markup=ik, parse_mode="Markdown")
+        
 # --------------------
 # ADMIN PANEL BOSHI va qolgan admin funktsiyalari (o'zgarmadi)
 # --------------------
