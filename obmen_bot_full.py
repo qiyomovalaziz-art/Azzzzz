@@ -772,44 +772,64 @@ async def admin_broadcast_start(message: types.Message):
     await message.answer("Yuboriladigan xabar matnini kiriting:", reply_markup=back_kb())
     await AdminFSM.broadcast_message.set()
 
-@dp.message_handler(state=AdminFSM.broadcast_message)
-async def admin_broadcast_confirm(message: types.Message, state: FSMContext):
-    if message.text == "⏹️ Bekor qilish":
-        await admin_panel(message)
-        await state.finish()
-        return
+@dp.callback_query_handler(lambda c: c.data.startswith("admin_order"))
+async def admin_order_callback(call: types.CallbackQuery):
+    try:
+        prefix, action, order_id = call.data.split("|")
+    except:
+        return await call.answer("Xato ma'lumot format.")
 
-    await state.update_data(text=message.text)
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row("✅ Tasdiqlash", "⏹️ Bekor qilish")
-    await message.answer("Ushbu xabarni barcha foydalanuvchilarga yuborishni tasdiqlaysizmi?", reply_markup=kb)
-    await AdminFSM.confirm_broadcast.set()
+    # Buyurtmalar bazasidan ma'lumot olish
+    order = orders.get(order_id)
+    if not order:
+        return await call.answer("Buyurtma topilmadi.")
 
-@dp.message_handler(state=AdminFSM.confirm_broadcast)
-async def admin_broadcast_send(message: types.Message, state: FSMContext):
-    if message.text == "⏹️ Bekor qilish":
-        await admin_panel(message)
-        await state.finish()
-        return
+    user_id = order["user_id"]
 
-    if message.text != "✅ Tasdiqlash":
-        await message.answer("Iltimos, '✅ Tasdiqlash' tugmasini bosing.")
-        return
+    # ✅ Buyurtmani tasdiqlash
+    if action == "confirm":
+        order["status"] = "✅ Tasdiqlandi"
+        save_json(ORDERS_FILE, orders)
 
-    data = await state.get_data()
-    text = data["text"]
+        await bot.send_message(user_id,
+            f"✅ Buyurtmangiz tasdiqlandi.\n"
+            f"Buyurtma ID: {order_id}"
+        )
 
-    count = 0
-    for uid in users.keys():
+        # Adminga ko‘rsatish uchun xabarni yangilash
         try:
-            await bot.send_message(uid, f"📢 {text}")
-            count += 1
+            await call.message.edit_caption(
+                f"{call.message.caption}\n\n✅ *Admin tomonidan tasdiqlandi*",
+                parse_mode="Markdown"
+            )
         except:
-            continue
+            pass
 
-    await message.answer(f"✅ Xabar {count} ta foydalanuvchiga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
-    await state.finish()
+        return await call.answer("Tasdiqlandi ✅")
 
+    # ❌ Buyurtmani bekor qilish
+    elif action == "reject":
+        order["status"] = "❌ Bekor qilindi"
+        save_json(ORDERS_FILE, orders)
+
+        await bot.send_message(user_id,
+            f"❌ Buyurtmangiz bekor qilindi.\n"
+            f"Buyurtma ID: {order_id}"
+        )
+
+        try:
+            await call.message.edit_caption(
+                f"{call.message.caption}\n\n❌ *Admin tomonidan bekor qilindi*",
+                parse_mode="Markdown"
+            )
+        except:
+            pass
+
+        return await call.answer("Bekor qilindi ❌")
+
+    else:
+        return await call.answer("Noma’lum amal.")
+        
 # ---- Foydalanuvchi adminga xabar yuborish menyusi ----
 @dp.message_handler(text="📨 Adminga xabar yuborish")
 async def contact_admin_start(message: types.Message, state: FSMContext):
