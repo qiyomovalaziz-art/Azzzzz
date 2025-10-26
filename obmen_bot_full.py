@@ -807,72 +807,57 @@ async def admin_broadcast_send(message: types.Message, state: FSMContext):
     await message.answer(f"✅ Xabar {count} ta foydalanuvchiga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
     await state.finish()
 
-@dp.message_handler(lambda m: m.text == "⬅️ Orqaga", state=AdminFSM.main)
-async def admin_back_to_main(message: types.Message, state: FSMContext):
-    await state.finish()
-    await message.answer("Asosiy menyuga qaytdingiz.", reply_markup=main_menu_kb(message.from_user.id))
-
-class AdminReplyFSM(StatesGroup):
-    wait_answer = State()
-
-
-from aiogram import types
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-
-ADMIN_ID = 7973934849  # <<< o'zingning admin ID'ing
-
-class ContactAdminFSM(StatesGroup):
-    wait_message = State()
-
-class AdminReplyFSM(StatesGroup):
-    wait_answer = State()
+# ---- Foydalanuvchi adminga xabar yuborish menyusi ----
+@dp.message_handler(text="📨 Adminga xabar yuborish")
+async def contact_admin_start(message: types.Message, state: FSMContext):
+    await message.answer(
+        "✍️ Adminga yuboriladigan xabar matnini kiriting:\n\n"
+        "Bekor qilish uchun ⏹️ Bekor qilish tugmasini bosing.",
+        reply_markup=back_kb()
+    )
+    await ContactAdminFSM.wait_message.set()
 
 
-# ---- Foydalanuvchi adminga xabar yuboradi ----
+# ---- Foydalanuvchi xabar yuboradi ----
 @dp.message_handler(state=ContactAdminFSM.wait_message)
 async def contact_admin_send(message: types.Message, state: FSMContext):
     if message.text == "⏹️ Bekor qilish":
         await state.finish()
         return await message.answer("Bekor qilindi ✅", reply_markup=main_menu_kb(message.from_user.id))
 
-    try:
-        reply_kb = types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton(
-                text="✉️ Javob yuborish",
-                callback_data=f"reply_to_user|{message.from_user.id}"
-            )
+    reply_kb = types.InlineKeyboardMarkup().add(
+        types.InlineKeyboardButton(
+            text="✉️ Javob yuborish",
+            callback_data=f"reply_to_user|{message.from_user.id}"
         )
+    )
 
-        await bot.send_message(
-            ADMIN_ID,
-            f"📨 *Foydalanuvchidan xabar:*\n\n"
-            f"👤 {message.from_user.full_name}\n"
-            f"🆔 {message.from_user.id}\n\n"
-            f"💬 {message.text}",
-            reply_markup=reply_kb,
-            parse_mode="Markdown"
-        )
-
-    except Exception as e:
-        logger.exception("Adminga xabar yuborishda xato: %s", e)
+    await bot.send_message(
+        ADMIN_ID,
+        f"📨 *Foydalanuvchidan xabar:*\n\n"
+        f"👤 {message.from_user.full_name}\n"
+        f"🆔 {message.from_user.id}\n\n"
+        f"💬 {message.text}",
+        reply_markup=reply_kb,
+        parse_mode="Markdown"
+    )
 
     await state.finish()
     await message.answer("✅ Xabaringiz adminga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
 
 
-# ---- Admin tugmani bosganda javob yozadi ----
+# ---- Admin tugmani bosganda javob yozishi ----
 @dp.callback_query_handler(lambda c: c.data.startswith("reply_to_user") and c.from_user.id == ADMIN_ID)
 async def reply_start(call: types.CallbackQuery, state: FSMContext):
     user_id = call.data.split("|")[1]
     await state.update_data(target=user_id)
 
-    await call.answer()  # <<< MUHIM, AKS HOLDA HECH NIMA CHIQMAYDI
+    await call.answer()  # <-- MUHIM
     await call.message.answer("✍️ Javob matnini kiriting:")
     await AdminReplyFSM.wait_answer.set()
 
 
-# ---- Admin yozgan javobni foydalanuvchiga yuboramiz ----
+# ---- Admin yozgan matn foydalanuvchiga yuboriladi ----
 @dp.message_handler(state=AdminReplyFSM.wait_answer)
 async def reply_send(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -886,16 +871,9 @@ async def reply_send(message: types.Message, state: FSMContext):
         )
         await message.answer("✅ Javob foydalanuvchiga yuborildi.")
     except:
-        await message.answer("❌ Xabar yuborilmadi. Foydalanuvchi botni bloklagan bo‘lishi mumkin.")
+        await message.answer("❌ Foydalanuvchi botni bloklagan.")
 
     await state.finish()
-
-
-# ---- Admindan ortga qaytish tugmasi ----
-@dp.message_handler(lambda m: m.text == "⬅️ Orqaga", state=AdminFSM.main)
-async def admin_back_to_main(message: types.Message, state: FSMContext):
-    await state.finish()
-    await message.answer("Asosiy menyuga qaytdingiz.", reply_markup=main_menu_kb(message.from_user.id))
 # --------------------
 # BOTNI ISHGA TUSHIRISH
 # --------------------
