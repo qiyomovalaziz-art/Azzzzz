@@ -847,7 +847,35 @@ async def contact_admin_send(message: types.Message, state: FSMContext):
 @dp.message_handler()
 async def unknown_message(message: types.Message):
     await message.answer("❓ Noma’lum buyruq. Pastdagi menyudan foydalaning.", reply_markup=main_menu_kb(message.from_user.id))
+# >>> ADMIN Foydalanuvchiga Javob Qaytarishi <<<
+ADMIN_ID = 7973934849   # siz bergan admin ID
 
+@dp.message_handler(lambda msg: msg.from_user.id == ADMIN_ID, content_types=['text'])
+async def admin_reply_to_user(message: types.Message):
+    # Admin faqat reply qilib javob bera oladi
+    if not message.reply_to_message:
+        return
+
+    old_text = message.reply_to_message.text or message.reply_to_message.caption or ""
+
+    # Foydalanuvchi ID sini matndan ajratib olish
+    user_id = None
+    for line in old_text.split("\n"):
+        if "🆔" in line:
+            try:
+                user_id = int(line.replace("🆔", "").strip())
+            except:
+                pass
+
+    if not user_id:
+        await message.answer("❌ Foydalanuvchi ID topilmadi. Faqat reply orqali javob bering.")
+        return
+
+    try:
+        await bot.send_message(user_id, f"✉️ *Admin javobi:*\n\n{message.text}", parse_mode="Markdown")
+        await message.answer("✅ Xabar foydalanuvchiga yuborildi.")
+    except:
+        await message.answer("❌ Xabar yuborilmadi. Foydalanuvchi botni bloklagan bo‘lishi mumkin.")
 # --------------------
 # BOTNI ISHGA TUSHIRISH
 # --------------------
