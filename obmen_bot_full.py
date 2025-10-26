@@ -807,24 +807,36 @@ async def admin_broadcast_send(message: types.Message, state: FSMContext):
     await message.answer(f"✅ Xabar {count} ta foydalanuvchiga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
     await state.finish()
 
+
 @dp.message_handler(lambda m: m.text == "⬅️ Orqaga", state=AdminFSM.main)
 async def admin_back_to_main(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer("Asosiy menyuga qaytdingiz.", reply_markup=main_menu_kb(message.from_user.id))
 
-# --------------------
-# Adminga xabar yuborish handlerlari (ContactAdminFSM)
-# --------------------
+
+# -------------------------------------------------
+# Adminga xabar yuborish (ContactAdminFSM)
+# -------------------------------------------------
+
 @dp.message_handler(lambda m: m.text == "📨 Adminga xabar yuborish")
 async def contact_admin_start(message: types.Message):
     await message.answer("✍️ Adminga yuboriladigan xabarni kiriting:", reply_markup=back_kb())
     await ContactAdminFSM.wait_message.set()
+
 
 @dp.message_handler(state=ContactAdminFSM.wait_message)
 async def contact_admin_send(message: types.Message, state: FSMContext):
     if message.text == "⏹️ Bekor qilish":
         await state.finish()
         return await message.answer("Bekor qilindi ✅", reply_markup=main_menu_kb(message.from_user.id))
+
+    reply_kb = types.InlineKeyboardMarkup()
+    reply_kb.add(
+        types.InlineKeyboardButton(
+            "✉️ Javob berish",
+            callback_data=f"reply_to_user|{message.from_user.id}"
+        )
+    )
 
     try:
         await bot.send_message(
@@ -833,7 +845,8 @@ async def contact_admin_send(message: types.Message, state: FSMContext):
             f"👤 {message.from_user.full_name}\n"
             f"🆔 {message.from_user.id}\n\n"
             f"💬 {message.text}",
-            parse_mode="Markdown"
+            parse_mode="Markdown",
+            reply_markup=reply_kb
         )
     except Exception as e:
         logger.exception("Adminga xabar yuborishda xato: %s", e)
@@ -841,13 +854,54 @@ async def contact_admin_send(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer("✅ Xabaringiz adminga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
 
+
+# -------------------------------------------------
+# Admindan foydalanuvchiga javob qaytarish (AdminReplyFSM)
+# -------------------------------------------------
+
+class AdminReplyFSM(StatesGroup):
+    wait_reply = State()
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("reply_to_user"))
+async def admin_reply_start(call: types.CallbackQuery, state: FSMContext):
+    if call.from_user.id != ADMIN_ID:
+        return await call.answer("⛔ Siz admin emassiz.")
+
+    user_id = call.data.split("|")[1]
+    await state.update_data(reply_user_id=user_id)
+
+    await call.message.answer("✍️ Javob matnini yoki rasmni yuboring:", reply_markup=back_kb())
+    await AdminReplyFSM.wait_reply.set()
+    await call.answer()
+
+
+@dp.message_handler(content_types=['text', 'photo', 'document'], state=AdminReplyFSM.wait_reply)
+async def admin_reply_send(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = data["reply_user_id"]
+
+    try:
+        if message.photo:
+            await bot.send_photo(user_id, message.photo[-1].file_id, caption=message.caption or "")
+        elif message.document:
+            await bot.send_document(user_id, message.document.file_id, caption=message.caption or "")
+        else:
+            await bot.send_message(user_id, message.text)
+
+        await message.answer("✅ Javob foydalanuvchiga yuborildi.", reply_markup=main_menu_kb(message.from_user.id))
+    except:
+        await message.answer("❌ Xatolik: foydalanuvchi xabarlarni qabul qila olmaydi (bloklagan).")
+
+    await state.finish()
+
+
 # --------------------
-# Xatoliklarni tutuvchi (fallback)
+# Default nomalum xabar
 # --------------------
 @dp.message_handler()
 async def unknown_message(message: types.Message):
     await message.answer("❓ Noma’lum buyruq. Pastdagi menyudan foydalaning.", reply_markup=main_menu_kb(message.from_user.id))
-
 # --------------------
 # BOTNI ISHGA TUSHIRISH
 # --------------------
