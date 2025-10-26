@@ -812,13 +812,35 @@ async def admin_back_to_main(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer("Asosiy menyuga qaytdingiz.", reply_markup=main_menu_kb(message.from_user.id))
 
-# --------------------
-# Adminga xabar yuborish handlerlari (ContactAdminFSM)
-# --------------------
-@dp.message_handler(lambda m: m.text == "📨 Adminga xabar yuborish")
-async def contact_admin_start(message: types.Message):
-    await message.answer("✍️ Adminga yuboriladigan xabarni kiriting:", reply_markup=back_kb())
-    await ContactAdminFSM.wait_message.set()
+class AdminReplyFSM(StatesGroup):
+    wait_answer = State()
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith("reply_to_user"))
+async def reply_start(call: types.CallbackQuery, state: FSMContext):
+    user_id = call.data.split("|")[1]
+    await state.update_data(target=user_id)
+
+    await call.message.answer("✍️ Foydalanuvchiga yuboriladigan *javob matnini kiriting:*", parse_mode="Markdown")
+    await AdminReplyFSM.wait_answer.set()
+
+
+@dp.message_handler(state=AdminReplyFSM.wait_answer)
+async def reply_send(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    user_id = int(data['target'])
+
+    try:
+        await bot.send_message(
+            user_id,
+            f"✉️ *Admin javobi:*\n\n{message.text}",
+            parse_mode="Markdown"
+        )
+        await message.answer("✅ Javob foydalanuvchiga yuborildi.")
+    except:
+        await message.answer("❌ Xabar yuborilmadi. Foydalanuvchi botni bloklagan bo‘lishi mumkin.")
+
+    await state.finish()
 
 @dp.message_handler(state=ContactAdminFSM.wait_message)
 async def contact_admin_send(message: types.Message, state: FSMContext):
