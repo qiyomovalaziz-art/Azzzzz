@@ -190,7 +190,7 @@ async def show_buy_rates(message: types.Message):
 async def show_working_hours(message: types.Message):
     text = (
         "📅 **Ish vaqtimiz:**\n"
-        "Dushanba – Yakshanba\n"
+        "Dushanbadan – Yakshanbagacha\n"
         "🕗 08:00 – 🕙 22:00\n"
         "⚠️ Eslatma: Tungi soat 22:00 dan ertalab 08:00 gacha buyurtma qabul qilinmaydi."
     )
